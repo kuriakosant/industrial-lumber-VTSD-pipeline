@@ -8,6 +8,7 @@ from io import BytesIO
 import openpyxl
 from dotenv import load_dotenv
 from openpyxl.styles import Font, Alignment, Border, Side
+from datetime import datetime
 
 # Load environment variables
 load_dotenv()
@@ -52,6 +53,7 @@ def parse_image_with_openrouter(image_bytes):
     ---
     
     Output the result STRICTLY as a JSON object containing `Customer_Name`, `Date`, and `Order_Items`.
+    ALWAYS write ONLY in english characters (transliterate Greek to English). NEVER output Greek text.
     Do NOT wrap the JSON in markdown formatting (like ```json), just output the raw JSON object.
     Ensure `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` keys are present in every item, even if their value is an empty string "".
     """
@@ -190,12 +192,13 @@ if 'parsed_data' in st.session_state:
     st.divider()
     st.subheader("Order Validation")
     
-    # Exract header info
+    # Extract header info
+    default_date = datetime.now().strftime("%d-%m-%Y")
     col1, col2 = st.columns(2)
     with col1:
-        customer_name = st.text_input("Customer Name", value=st.session_state['parsed_data'].get("Customer_Name", "Unknown Customer"))
+        customer_name = st.text_input("Customer Name", value=st.session_state['parsed_data'].get("Customer_Name", ""))
     with col2:
-        order_date = st.text_input("Order Date", value=st.session_state['parsed_data'].get("Date", "Unknown Date"))
+        order_date = st.text_input("Order Date", value=st.session_state['parsed_data'].get("Date", default_date))
 
     st.markdown("Review and edit the line-items before generating the final Excel file. Check the dimensions and PVC tapes.")
     
@@ -225,6 +228,9 @@ if 'parsed_data' in st.session_state:
     if excel_data:
         # Sanitize filename
         safe_name = "".join(x for x in customer_name if x.isalnum() or x in " -_").strip()
+        if not safe_name:
+            safe_name = "ORDER-CHECK"
+            
         safe_date = "".join(x for x in order_date if x.isalnum() or x in " -_").strip()
         filename = f"{safe_name}_{safe_date}.xlsx".replace(" ", "_")
         
