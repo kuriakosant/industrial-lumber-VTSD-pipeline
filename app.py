@@ -47,13 +47,26 @@ def parse_image_with_openrouter(image_bytes):
     You will inspect a handwritten or drawn note containing material orders.
     You must extract the Order Customer Name, Date, and a list of line-items.
     
-    Here are the strict factory domain rules for translating what's on the paper:
+    CRITICAL OBJECTIVE: The most important part of this process is to accurately parse the numbers (Length/ΜΗΚΟΣ, Width/ΠΛΑΤΟΣ, Quantity/ΤΕΜΑΧΙΑ) and exactly where the PVC edge banding is placed based on underlines. Getting the exact material string right is secondary to getting the dimensions and PVC rules 100% accurate.
+
+    Follow these rules ALWAYS:
+    1. STRICTLY ENGLISH: ALWAYS write ONLY in english characters (transliterate Greek to English, e.g., "ΛΕΥΚΗ" becomes "LEYKI 18MM"). NEVER output Greek text in your JSON.
+    2. Grouping/Sorting: Read and sort the order exactly as if reading paragraphs from top to bottom. If there is a cluster of the same material or layout, write that entire group first before moving to the next section. Do not scramble the order.
+    3. Dimensions: If an order says `80 x 76 = 2`, `80` (cm) becomes `800` (Length_mm/ΜΗΚΟΣ), and `76` (cm) becomes `760` (Width_mm/ΠΛΑΤΟΣ). Do NOT put "mm" in the final column; just output the integer (e.g., 800). `2` is the Quantity (ΤΕΜΑΧΙΑ).
+    4. Edge Banding (PVC) Dashes: Customers put underlines/dashes below the numbers to indicate PVC tape for most orders:
+       - 1 dash (_) below Length -> Requires PVC on 1 side. Output `2208` in `MHKOS_1` and leave `MHKOS_2` empty ("").
+       - 2 dashes (__, =) below Length -> Requires PVC on BOTH sides. Output `2208` in `MHKOS_1` AND `MHKOS_2`.
+       - 1 dash (_) below Width -> Output `2208` in `PLATOS_1` and leave `PLATOS_2` empty ("").
+       - 2 dashes (__, =) below Width -> Output `2208` in `PLATOS_1` AND `PLATOS_2`.
+       - No PVC dashes on a particular line? -> Write "OXI PVC" in the `PVC_Color` column, and leave `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` empty (""). Do NOT leave the actual `Length_mm` and `Width_mm` empty!
+    5. Comments: If you have any remarks or comments about an unclear line, put them in the `Description` (ΠΕΡΙΓΡΑΦΗ) field. Do not invent custom JSON keys.
+
+    Here are the broader factory domain rules:
     ---
     {rules_context}
     ---
     
     Output the result STRICTLY as a JSON object containing `Customer_Name`, `Date`, and `Order_Items`.
-    ALWAYS write ONLY in english characters (transliterate Greek to English). NEVER output Greek text.
     Do NOT wrap the JSON in markdown formatting (like ```json), just output the raw JSON object.
     Ensure `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` keys are present in every item, even if their value is an empty string "".
     """
