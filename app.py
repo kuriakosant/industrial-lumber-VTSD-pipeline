@@ -113,9 +113,19 @@ def generate_excel_from_template(customer_name, order_date, df):
     wb = openpyxl.load_workbook(TEMPLATE_PATH)
     ws = wb.active
 
-    # Insert header info (Based on typical default order layout: F3 Date, F4 Name)
-    ws.cell(row=3, column=6).value = order_date
-    ws.cell(row=4, column=6).value = customer_name
+    # In openpyxl, you cannot assign a value directly to a 'MergedCell'. You must assign it to the top-left cell of the merged group.
+    # Looking at the template, the data likely starts at column E (5) or F (6).
+    # We will safely assign to both E and F just in case, catching the MergedCell error.
+    for col in [5, 6, 7]:
+        try:
+            ws.cell(row=3, column=col).value = order_date
+        except AttributeError:
+            pass  # It's a MergedCell, ignore and try the other
+            
+        try:
+            ws.cell(row=4, column=col).value = customer_name
+        except AttributeError:
+            pass
 
     # Define minimal styling for new rows if desired
     border_style = Border(left=Side(style='thin'), right=Side(style='thin'),
@@ -175,7 +185,7 @@ if uploaded_file is not None:
     col1, col2 = st.columns([1, 1])
     
     with col1:
-        st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
     
     with col2:
         if st.button("Extract Data", type="primary"):
