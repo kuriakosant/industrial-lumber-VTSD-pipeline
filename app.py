@@ -15,8 +15,7 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-ADMIN_PASSPHRASE = os.getenv("ADMIN_PASSPHRASE", "default_password")
-MODEL_NAME = "openai/gpt-4o"
+MODEL_NAME = "openai/gpt-4o-mini"
 TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
@@ -189,37 +188,8 @@ def generate_excel_from_template(customer_name, order_date, df):
 # --- STREAMLIT UI ---
 st.set_page_config(page_title="VTSD Pipeline", layout="wide")
 
-# Sidebar Navigation
-page = st.sidebar.selectbox("Navigation", ["Scan Orders", "Admin: Add Products"])
-
-if page == "Admin: Add Products":
-    st.title("🔒 Admin Panel")
-    
-    # Simple session state for authentication
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-        
-    if not st.session_state.authenticated:
-        password = st.text_input("Enter Admin Passphrase", type="password")
-        if st.button("Login"):
-            if password == ADMIN_PASSPHRASE:
-                st.session_state.authenticated = True
-                st.rerun()
-            else:
-                st.error("Incorrect Passphrase")
-                
-    if st.session_state.authenticated:
-        st.success("Authenticated Successfully.")
-        st.markdown("### Manage Products Database")
-        st.info("Product database management UI goes here. (Connect to your DB or excel mapping files).")
-        
-        if st.button("Logout"):
-            st.session_state.authenticated = False
-            st.rerun()
-
-elif page == "Scan Orders":
-    st.title("🏭 Factory Vision-to-Data Pipeline")
-    st.markdown("Upload a handwritten wood/melamine order to automatically extract it into the standard template using AI.")
+st.title("🏭 Factory Vision-to-Data Pipeline")
+st.markdown("Upload a handwritten wood/melamine order to automatically extract it into the standard template using AI.")
 
 
 # File uploader (allows camera input on mobile/tablets)
