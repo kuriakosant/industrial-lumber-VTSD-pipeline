@@ -59,7 +59,8 @@ def parse_image_with_openrouter(image_bytes):
        - 1 dash (_) below Width -> Output `2208` in `PLATOS_1` and leave `PLATOS_2` empty ("").
        - 2 dashes (__, =) below Width -> Output `2208` in `PLATOS_1` AND `PLATOS_2`.
        - No PVC dashes on a particular line? -> Write "OXI PVC" in the `PVC_Color` column, and leave `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` empty (""). Do NOT leave the actual `Length_mm` and `Width_mm` empty!
-    5. Comments: If you have any remarks or comments about an unclear line, put them in the `Description` (ΠΕΡΙΓΡΑΦΗ) field. Do not invent custom JSON keys.
+    5. Columns Constraint (Material and Description): You MUST place a default material or the extracted material into the `Material` (ΥΛΙΚΟ) field for EVERY single row. NEVER leave the `Material` field empty (e.g., write "AGNOSTO" if you are truly unsure). Conversely, you MUST leave the `Description` (ΠΕΡΙΓΡΑΦΗ) field completely EMPTY ("") unless you absolutely must leave a critical warning or comment for the worker.
+    6. Comments: If you have any remarks or comments about an unclear line, put them in the `Description` (ΠΕΡΙΓΡΑΦΗ) field. Do not invent custom JSON keys.
 
     Here are the broader factory domain rules:
     ---
@@ -224,6 +225,8 @@ if 'parsed_data' in st.session_state:
         order_date = st.text_input("Order Date", value=st.session_state['parsed_data'].get("Date", default_date))
 
     st.markdown("Review and edit the line-items before generating the final Excel file. Check the dimensions and PVC tapes.")
+    
+    st.warning("⚠️ **DO NOT click the small download icon inside the table!** That will download a broken `.csv` file. Always use the big colored `Download Template Excel` button at the bottom of the page.")
     
     # Load items into dataframe
     df = pd.DataFrame(st.session_state['parsed_data'].get("Order_Items", []))
