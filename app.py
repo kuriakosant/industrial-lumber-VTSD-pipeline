@@ -15,14 +15,14 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-MODEL_NAME = "openai/gpt-4o-mini"
+MODEL_NAME = "anthropic/claude-3.5-sonnet"
 TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
 def encode_image(image_bytes):
     return base64.b64encode(image_bytes).decode('utf-8')
 
-def parse_image_with_openrouter(image_bytes):
+def parse_image_with_openrouter(image_bytes, special_instructions=""):
     """Sends the image to OpenRouter and returns the structured JSON."""
     if not OPENROUTER_API_KEY:
         st.error("OpenRouter API Key is missing. Please set it in your .env file.")
@@ -70,6 +70,15 @@ def parse_image_with_openrouter(image_bytes):
     Output the result STRICTLY as a JSON object containing `Customer_Name`, `Date`, and `Order_Items`.
     Do NOT wrap the JSON in markdown formatting (like ```json), just output the raw JSON object.
     Ensure `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` keys are present in every item, even if their value is an empty string "".
+    """
+
+    if special_instructions.strip():
+        prompt += f"""
+    ---
+    CRITICAL OVERRIDE - SPECIAL INSTRUCTIONS FOR THIS SPECIFIC ORDER:
+    {special_instructions}
+    (If these conflict with any rules above, YOU MUST FOLLOW THESE INSTRUCTIONS INSTEAD).
+    ---
     """
 
     payload = {
@@ -203,10 +212,11 @@ if uploaded_file is not None:
         st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
     
     with col2:
+        special_instructions = st.text_area("Special Instructions (Optional)", help="Tell the AI how to read this specific client's format if it differs from the standard rules.")
         if st.button("Extract Data", type="primary"):
             with st.spinner("Analyzing image and extracting symbols... This may take 15-20 seconds."):
                 image_bytes = uploaded_file.getvalue()
-                parsed_json = parse_image_with_openrouter(image_bytes)
+                parsed_json = parse_image_with_openrouter(image_bytes, special_instructions)
                 
                 if parsed_json:
                     st.session_state['parsed_data'] = parsed_json
