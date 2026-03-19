@@ -51,16 +51,18 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
 
     Follow these rules ALWAYS:
     1. STRICTLY ENGLISH: ALWAYS write ONLY in english characters (transliterate Greek to English, e.g., "ΛΕΥΚΗ" becomes "LEYKI 18MM"). NEVER output Greek text in your JSON.
-    2. Grouping/Sorting: Read and sort the order exactly as if reading paragraphs from top to bottom. If there is a cluster of the same material or layout, write that entire group first before moving to the next section. Do not scramble the order.
-    3. Dimensions: If an order says `80 x 76 = 2`, `80` (cm) becomes `800` (Length_mm/ΜΗΚΟΣ), and `76` (cm) becomes `760` (Width_mm/ΠΛΑΤΟΣ). Do NOT put "mm" in the final column; just output the integer (e.g., 800). `2` is the Quantity (ΤΕΜΑΧΙΑ).
-    4. Edge Banding (PVC) Placement: Customers put dashes below the numbers to indicate WHERE PVC tape is placed. `2208` represents the placement boolean, NEVER the PVC color itself.
-       - 1 dash (_) below Length -> Output `2208` in `MHKOS_1` and leave `MHKOS_2` empty ("").
-       - 2 dashes (__, =) below Length -> Output `2208` in `MHKOS_1` AND `MHKOS_2`.
-       - 1 dash (_) below Width -> Output `2208` in `PLATOS_1` and leave `PLATOS_2` empty ("").
-       - 2 dashes (__, =) below Width -> Output `2208` in `PLATOS_1` AND `PLATOS_2`.
-    5. PVC Color Constraints: The `PVC_Color` column represents the actual color code (usually 2-3 digits, e.g., "PVC 789"), NEVER 4-digits like 2208.
-       - If there ARE dashed lines indicating PVC on the piece, but no PVC color code is written: Write "IDIO" in the `PVC_Color` column.
-       - If there ARE NO dashed lines for that piece: Write "OXI PVC" in the `PVC_Color` column, and leave `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` empty (""). Do NOT leave the actual `Length_mm` and `Width_mm` empty!
+    2. Exhaustive Data Entry (NO SKIPPING): You MUST extract EVERY SINGLE line item on the page. NEVER summarize, merge, or skip lines. Melamine entries are easily recognized by the format `[Length] x [Width] [Quantity]` (e.g. `121 x 59 - 1` or `80 x 76 = 2`). If it matches this pattern, it is an order line and MUST be included. You can group identical materials together, but you must output every physical item listed on the paper.
+    3. Dimensions & Quantity: `80` (cm) becomes `800` (Length_mm/ΜΗΚΟΣ). `76` (cm) becomes `760` (Width_mm/ΠΛΑΤΟΣ). Do NOT put "mm"; just output the integer (e.g., 800). 
+       - Quantity (ΤΕΜΑΧΙΑ) is usually a 1- or 2-digit number found at the very end (right) or beginning (left) of the entry.
+       - IMPORTANT: A circle with a number inside it (e.g., ⑤) ALWAYS means Quantity (ΤΕΜΑΧΙΑ). It has nothing to do with PVC rules.
+    4. Edge Banding (PVC) Placement: Customers indicate PVC using dashes, squares, or empty circles. `2208` is the placement flag, NEVER the color.
+       - EXACTLY 1 DASH (`_` or `-`) below, left, or right of a measurement (e.g. `- 57` or `57_`) -> Output `2208` in `MHKOS_1` (or `PLATOS_1`). The secondary side MUST be empty ("").
+       - EXACTLY 2 DASHES (`__`, `=`) below, left, or right -> Output `2208` in BOTH sides (e.g., `MHKOS_1` AND `MHKOS_2`).
+       - SQUARE (□) or EMPTY CIRCLE (○) next to the metrics -> Means PVC EVERYWHERE. Output `2208` in `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, AND `PLATOS_2`.
+       - Special Instructions input by the user on the web form will override these nuance rules as needed.
+    5. PVC Color Constraints: `PVC_Color` is the physical color code (e.g., "PVC 789"). DO NOT confuse it with the 2208 placement flag. 
+       - If there ARE dashed lines on the piece, but no explicit color code written: Write "IDIO" in the `PVC_Color` column.
+       - IF THERE ARE ZERO DASHES anywhere on the dimensions for a piece: You MUST write "OXI PVC" in the `PVC_Color` column, and YOU MUST leave `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` completely empty ("").
     6. Uncertainty & Description: You must be perfect. If you are not 100% certain about a piece's dimension metric (e.g., 85 vs 850), or if you are unsure whether a dash exists for PVC, you MUST write "UNSURE: METRIC" or "UNSURE: PVC" in the `Description` (ΠΕΡΙΓΡΑΦΗ) column for that specific row. Otherwise, leave the `Description` field completely EMPTY ("").
     7. Columns Constraint (Material): You MUST place a default or extracted material into the `Material` (ΥΛΙΚΟ) field for EVERY single row (e.g. "LEYKI 18MM"). NEVER leave the `Material` field empty.
 
