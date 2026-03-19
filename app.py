@@ -15,7 +15,7 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-MODEL_NAME = "anthropic/claude-3.5-sonnet"
+MODEL_NAME = "openai/gpt-4o"
 TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
@@ -53,14 +53,16 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     1. STRICTLY ENGLISH: ALWAYS write ONLY in english characters (transliterate Greek to English, e.g., "ΛΕΥΚΗ" becomes "LEYKI 18MM"). NEVER output Greek text in your JSON.
     2. Grouping/Sorting: Read and sort the order exactly as if reading paragraphs from top to bottom. If there is a cluster of the same material or layout, write that entire group first before moving to the next section. Do not scramble the order.
     3. Dimensions: If an order says `80 x 76 = 2`, `80` (cm) becomes `800` (Length_mm/ΜΗΚΟΣ), and `76` (cm) becomes `760` (Width_mm/ΠΛΑΤΟΣ). Do NOT put "mm" in the final column; just output the integer (e.g., 800). `2` is the Quantity (ΤΕΜΑΧΙΑ).
-    4. Edge Banding (PVC) Dashes: Customers put underlines/dashes below the numbers to indicate PVC tape for most orders:
-       - 1 dash (_) below Length -> Requires PVC on 1 side. Output `2208` in `MHKOS_1` and leave `MHKOS_2` empty ("").
-       - 2 dashes (__, =) below Length -> Requires PVC on BOTH sides. Output `2208` in `MHKOS_1` AND `MHKOS_2`.
+    4. Edge Banding (PVC) Placement: Customers put dashes below the numbers to indicate WHERE PVC tape is placed. `2208` represents the placement boolean, NEVER the PVC color itself.
+       - 1 dash (_) below Length -> Output `2208` in `MHKOS_1` and leave `MHKOS_2` empty ("").
+       - 2 dashes (__, =) below Length -> Output `2208` in `MHKOS_1` AND `MHKOS_2`.
        - 1 dash (_) below Width -> Output `2208` in `PLATOS_1` and leave `PLATOS_2` empty ("").
        - 2 dashes (__, =) below Width -> Output `2208` in `PLATOS_1` AND `PLATOS_2`.
-       - No PVC dashes on a particular line? -> Write "OXI PVC" in the `PVC_Color` column, and leave `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` empty (""). Do NOT leave the actual `Length_mm` and `Width_mm` empty!
-    5. Columns Constraint (Material and Description): You MUST place a default material or the extracted material into the `Material` (ΥΛΙΚΟ) field for EVERY single row. NEVER leave the `Material` field empty (e.g., write "AGNOSTO" if you are truly unsure). Conversely, you MUST leave the `Description` (ΠΕΡΙΓΡΑΦΗ) field completely EMPTY ("") unless you absolutely must leave a critical warning or comment for the worker.
-    6. Comments: If you have any remarks or comments about an unclear line, put them in the `Description` (ΠΕΡΙΓΡΑΦΗ) field. Do not invent custom JSON keys.
+    5. PVC Color Constraints: The `PVC_Color` column represents the actual color code (usually 2-3 digits, e.g., "PVC 789"), NEVER 4-digits like 2208.
+       - If there ARE dashed lines indicating PVC on the piece, but no PVC color code is written: Write "IDIO" in the `PVC_Color` column.
+       - If there ARE NO dashed lines for that piece: Write "OXI PVC" in the `PVC_Color` column, and leave `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` empty (""). Do NOT leave the actual `Length_mm` and `Width_mm` empty!
+    6. Uncertainty & Description: You must be perfect. If you are not 100% certain about a piece's dimension metric (e.g., 85 vs 850), or if you are unsure whether a dash exists for PVC, you MUST write "UNSURE: METRIC" or "UNSURE: PVC" in the `Description` (ΠΕΡΙΓΡΑΦΗ) column for that specific row. Otherwise, leave the `Description` field completely EMPTY ("").
+    7. Columns Constraint (Material): You MUST place a default or extracted material into the `Material` (ΥΛΙΚΟ) field for EVERY single row (e.g. "LEYKI 18MM"). NEVER leave the `Material` field empty.
 
     Here are the broader factory domain rules:
     ---
