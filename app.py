@@ -85,8 +85,12 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     ---
     """
 
+    prompt += "\n\nCRITICAL: DO NOT TRUNCATE OR SUMMARIZE THE OUTPUT. If there are 40 items on the page, you MUST output 40 JSON objects in the array. Never stop early."
+
     payload = {
         "model": MODEL_NAME,
+        "temperature": 0.1,
+        "max_tokens": 4096,
         "messages": [
             {
                 "role": "user",
