@@ -56,6 +56,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
        - Quantity (ΤΕΜΑΧΙΑ) is usually a 1- or 2-digit number found at the very end (right) or beginning (left) of the entry.
        - IMPORTANT: A circle with a number inside it (e.g., ⑤) ALWAYS means Quantity (ΤΕΜΑΧΙΑ). It has nothing to do with PVC rules.
     4. Edge Banding (PVC) Placement: Customers indicate PVC using dashes, squares, or empty circles. `2208` is the placement flag, NEVER the color.
+       - IMPORTANT OVERRIDE: If you see dashes repeating across 10, 20, or 30 entries in a row, DO NOT assume they are "table separators" or "formatting lines". They are individual PVC requests. You MUST extract and apply PVC to EVERY SINGLE ROW that has a dash.
        - EXACTLY 1 DASH (`_` or `-`) below, left, or right of a measurement (e.g. `- 57` or `57_`) -> Output `2208` in `MHKOS_1` (or `PLATOS_1`). The secondary side MUST be empty ("").
        - EXACTLY 2 DASHES (`__`, `=`) below, left, or right -> Output `2208` in BOTH sides (e.g., `MHKOS_1` AND `MHKOS_2`).
        - SQUARE (□) or EMPTY CIRCLE (○) next to the metrics -> Means PVC EVERYWHERE. Output `2208` in `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, AND `PLATOS_2`.
