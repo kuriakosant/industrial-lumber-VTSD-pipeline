@@ -219,7 +219,11 @@ uploaded_files = st.file_uploader(
 if uploaded_files:
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.info(f"📂 **{len(uploaded_files)} file(s) uploaded.** Each image will be processed as a separate order.")
+        st.info(f"📂 **{len(uploaded_files)} file(s) uploaded.**")
+        processing_mode = st.radio(
+            "Processing Mode",
+            ["Separate Orders (One Excel file per image)", "Single Massive Order (Merge all images into one Excel file)"]
+        )
     with col2:
         special_instructions = st.text_area(
             "Special Instructions (Optional)",
@@ -229,6 +233,8 @@ if uploaded_files:
 
     if st.button("⚡ Extract All Orders", type="primary"):
         orders = []
+        master_order = None
+        
         progress = st.progress(0, text="Starting extraction...")
         for i, uploaded_file in enumerate(uploaded_files):
             progress.progress(
@@ -238,14 +244,27 @@ if uploaded_files:
             with st.spinner(f"Analyzing '{uploaded_file.name}'..."):
                 image_bytes = uploaded_file.getvalue()
                 parsed_json = parse_image_with_openrouter(image_bytes, special_instructions)
+                
                 if parsed_json:
-                    parsed_json["_source_filename"] = uploaded_file.name
-                    orders.append(parsed_json)
+                    if "Separate Orders" in processing_mode:
+                        parsed_json["_source_filename"] = uploaded_file.name
+                        orders.append(parsed_json)
+                    else:
+                        if master_order is None:
+                            master_order = parsed_json
+                            master_order["_source_filename"] = "Merged_Batch"
+                        else:
+                            master_order["Order_Items"].extend(parsed_json.get("Order_Items", []))
                 else:
                     st.error(f"❌ Failed to extract data from '{uploaded_file.name}'. Skipping.")
         progress.progress(100, text="All done!")
+        
+        if "Massive Order" in processing_mode and master_order:
+            orders.append(master_order)
+            
         st.session_state["parsed_orders"] = orders
-        st.success(f"✅ Successfully extracted {len(orders)} order(s). Review below.")
+        msg = "merged order" if "Massive Order" in processing_mode else f"{len(orders)} order(s)"
+        st.success(f"✅ Successfully extracted {msg}. Review below.")
 
 # Display each order in its own section
 if "parsed_orders" in st.session_state and st.session_state["parsed_orders"]:
