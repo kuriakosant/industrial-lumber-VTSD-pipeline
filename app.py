@@ -207,83 +207,101 @@ def generate_excel_from_template(customer_name, order_date, df):
 st.set_page_config(page_title="VTSD Pipeline", layout="wide")
 
 st.title("🏭 Factory Vision-to-Data Pipeline")
-st.markdown("Upload a handwritten wood/melamine order to automatically extract it into the standard template using AI.")
+st.markdown("Upload one or more handwritten wood/melamine orders to automatically extract them into the standard template using AI.")
 
+# File uploader — supports multiple images
+uploaded_files = st.file_uploader(
+    "Upload or take a picture of the order(s)",
+    type=["jpg", "jpeg", "png"],
+    accept_multiple_files=True
+)
 
-# File uploader (allows camera input on mobile/tablets)
-uploaded_file = st.file_uploader("Upload or take a picture of the order", type=["jpg", "jpeg", "png"])
-
-if uploaded_file is not None:
-    # Display the image side-by-side with results
-    col1, col2 = st.columns([1, 1])
-    
+if uploaded_files:
+    col1, col2 = st.columns([2, 1])
     with col1:
-        st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
-    
+        st.info(f"📂 **{len(uploaded_files)} file(s) uploaded.** Each image will be processed as a separate order.")
     with col2:
-        special_instructions = st.text_area("Special Instructions (Optional)", help="Tell the AI how to read this specific client's format if it differs from the standard rules.")
-        if st.button("Extract Data", type="primary"):
-            with st.spinner("Analyzing image and extracting symbols... This may take 15-20 seconds."):
+        special_instructions = st.text_area(
+            "Special Instructions (Optional)",
+            help="Applied to ALL uploaded images. Tell the AI how to read these specific client formats.",
+            height=80
+        )
+
+    if st.button("⚡ Extract All Orders", type="primary"):
+        orders = []
+        progress = st.progress(0, text="Starting extraction...")
+        for i, uploaded_file in enumerate(uploaded_files):
+            progress.progress(
+                int((i / len(uploaded_files)) * 100),
+                text=f"Processing image {i+1} of {len(uploaded_files)}: {uploaded_file.name}..."
+            )
+            with st.spinner(f"Analyzing '{uploaded_file.name}'..."):
                 image_bytes = uploaded_file.getvalue()
                 parsed_json = parse_image_with_openrouter(image_bytes, special_instructions)
-                
                 if parsed_json:
-                    st.session_state['parsed_data'] = parsed_json
-                    st.success("Analysis complete! Please review the extracted data.")
+                    parsed_json["_source_filename"] = uploaded_file.name
+                    orders.append(parsed_json)
+                else:
+                    st.error(f"❌ Failed to extract data from '{uploaded_file.name}'. Skipping.")
+        progress.progress(100, text="All done!")
+        st.session_state["parsed_orders"] = orders
+        st.success(f"✅ Successfully extracted {len(orders)} order(s). Review below.")
 
-# Display and edit data below
-if 'parsed_data' in st.session_state:
-    st.divider()
-    st.subheader("Order Validation")
-    
-    # Extract header info
+# Display each order in its own section
+if "parsed_orders" in st.session_state and st.session_state["parsed_orders"]:
+    st.warning("⚠️ **DO NOT click the small download icon inside the table!** Use the big `Download` button below each order for the correctly formatted Excel file.")
     default_date = datetime.now().strftime("%d-%m-%Y")
-    col1, col2 = st.columns(2)
-    with col1:
-        customer_name = st.text_input("Customer Name", value=st.session_state['parsed_data'].get("Customer_Name", ""))
-    with col2:
-        order_date = st.text_input("Order Date", value=st.session_state['parsed_data'].get("Date", default_date))
-
-    st.markdown("Review and edit the line-items before generating the final Excel file. Check the dimensions and PVC tapes.")
-    
-    st.warning("⚠️ **DO NOT click the small download icon inside the table!** That will download a broken `.csv` file. Always use the big colored `Download Template Excel` button at the bottom of the page.")
-    
-    # Load items into dataframe
-    df = pd.DataFrame(st.session_state['parsed_data'].get("Order_Items", []))
-    
-    # Ensure all columns exist even if empty
     expected_cols = ["Material", "Description", "Length_mm", "Width_mm", "Quantity", "PVC_Color", "MHKOS_1", "MHKOS_2", "PLATOS_1", "PLATOS_2"]
-    for col in expected_cols:
-        if col not in df.columns:
-            df[col] = ""
 
-    # Sort columns to standard order for viewing
-    df = df[expected_cols]
-            
-    # Render editable dataframe
-    edited_df = st.data_editor(
-        df,
-        num_rows="dynamic",
-        use_container_width=True
-    )
-    
-    # Generate Excel button
-    st.divider()
-    excel_data = generate_excel_from_template(customer_name, order_date, edited_df)
-    
-    if excel_data:
-        # Sanitize filename
-        safe_name = "".join(x for x in customer_name if x.isalnum() or x in " -_").strip()
-        if not safe_name:
-            safe_name = "ORDER-CHECK"
-            
-        safe_date = "".join(x for x in order_date if x.isalnum() or x in " -_").strip()
-        filename = f"{safe_name}_{safe_date}.xlsx".replace(" ", "_")
-        
-        st.download_button(
-            label="📥 Download Template Excel",
-            data=excel_data,
-            file_name=filename,
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            type="primary"
+    for i, order_data in enumerate(st.session_state["parsed_orders"]):
+        st.divider()
+
+        customer_name_default = order_data.get("Customer_Name", "")
+        date_default = order_data.get("Date", default_date)
+        source_file = order_data.get("_source_filename", f"order_{i+1}")
+
+        st.subheader(f"📋 Order {i+1}: {customer_name_default or source_file}")
+
+        col1, col2 = st.columns(2)
+        with col1:
+            customer_name = st.text_input(
+                "Customer Name",
+                value=customer_name_default,
+                key=f"customer_{i}"
+            )
+        with col2:
+            order_date = st.text_input(
+                "Order Date",
+                value=date_default,
+                key=f"date_{i}"
+            )
+
+        # Build dataframe for this order
+        df = pd.DataFrame(order_data.get("Order_Items", []))
+        for col in expected_cols:
+            if col not in df.columns:
+                df[col] = ""
+        df = df[expected_cols]
+
+        edited_df = st.data_editor(
+            df,
+            num_rows="dynamic",
+            use_container_width=True,
+            key=f"editor_{i}"
         )
+
+        # Generate and offer download for this order
+        excel_data = generate_excel_from_template(customer_name, order_date, edited_df)
+        if excel_data:
+            safe_name = "".join(x for x in customer_name if x.isalnum() or x in " -_").strip() or "ORDER-CHECK"
+            safe_date = "".join(x for x in order_date if x.isalnum() or x in " -_").strip()
+            filename = f"{safe_name}_{safe_date}.xlsx".replace(" ", "_")
+
+            st.download_button(
+                label=f"📥 Download {safe_name}",
+                data=excel_data,
+                file_name=filename,
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                type="primary",
+                key=f"download_{i}"
+            )
