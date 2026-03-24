@@ -91,7 +91,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     payload = {
         "model": MODEL_NAME,
         "temperature": 0.1,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
         "messages": [
             {
                 "role": "user",
@@ -233,7 +233,13 @@ if uploaded_files:
 
     if st.button("⚡ Extract All Orders", type="primary"):
         orders = []
-        master_order = None
+        is_massive = "Massive Order" in processing_mode
+        master_order = {
+            "Customer_Name": "Merged Batch",
+            "Date": datetime.now().strftime("%d-%m-%Y"),
+            "Order_Items": [],
+            "_source_filename": "Merged_Batch"
+        }
         
         progress = st.progress(0, text="Starting extraction...")
         for i, uploaded_file in enumerate(uploaded_files):
@@ -245,25 +251,25 @@ if uploaded_files:
                 image_bytes = uploaded_file.getvalue()
                 parsed_json = parse_image_with_openrouter(image_bytes, special_instructions)
                 
-                if parsed_json:
-                    if "Separate Orders" in processing_mode:
-                        parsed_json["_source_filename"] = uploaded_file.name
+                if isinstance(parsed_json, dict):
+                    if not is_massive:
+                        parsed_json["_source_filename"] = uploaded_file.name  # type: ignore
                         orders.append(parsed_json)
                     else:
-                        if master_order is None:
-                            master_order = parsed_json
-                            master_order["_source_filename"] = "Merged_Batch"
-                        else:
-                            master_order["Order_Items"].extend(parsed_json.get("Order_Items", []))
+                        new_items = parsed_json.get("Order_Items", [])  # type: ignore
+                        if isinstance(new_items, list):
+                            master_items = master_order["Order_Items"]
+                            if isinstance(master_items, list):
+                                master_items.extend(new_items)  # type: ignore
                 else:
-                    st.error(f"❌ Failed to extract data from '{uploaded_file.name}'. Skipping.")
+                    st.error(f"❌ Failed to extract valid tabular data from '{uploaded_file.name}'. Skipping.")
         progress.progress(100, text="All done!")
         
-        if "Massive Order" in processing_mode and master_order:
+        if is_massive and len(master_order["Order_Items"]) > 0:
             orders.append(master_order)
             
         st.session_state["parsed_orders"] = orders
-        msg = "merged order" if "Massive Order" in processing_mode else f"{len(orders)} order(s)"
+        msg = "merged order" if is_massive else f"{len(orders)} order(s)"
         st.success(f"✅ Successfully extracted {msg}. Review below.")
 
 # Display each order in its own section
