@@ -15,7 +15,7 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-MODEL_NAME = "openai/gpt-4o"
+MODEL_NAME = "anthropic/claude-3.5-sonnet"
 TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
