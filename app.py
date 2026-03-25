@@ -66,6 +66,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
        - IF THERE ARE ZERO DASHES anywhere on the dimensions for a piece: You MUST write "OXI PVC" in the `PVC_Color` column, and YOU MUST leave `MHKOS_1`, `MHKOS_2`, `PLATOS_1`, and `PLATOS_2` completely empty ("").
     6. Uncertainty & Description: You must be perfect. If you are not 100% certain about a piece's dimension metric (e.g., 85 vs 850), or if you are unsure whether a dash exists for PVC, you MUST write "UNSURE: METRIC" or "UNSURE: PVC" in the `Description` (ΠΕΡΙΓΡΑΦΗ) column for that specific row. Otherwise, leave the `Description` field completely EMPTY ("").
     7. Columns Constraint (Material): You MUST place a default or extracted material into the `Material` (ΥΛΙΚΟ) field for EVERY single row (e.g. "LEYKI 18MM"). NEVER leave the `Material` field empty.
+    8. Loop Prevention (Row_ID): You MUST add a new integer key called `"Row_ID"` to every order item, starting at 1 and counting up (1, 2, 3, 4...). This is mathematically required to ensure you don't fall into a generative loop. Every row must have a unique, incrementing Row_ID.
 
     Here are the broader factory domain rules:
     ---
@@ -90,7 +91,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
 
     payload = {
         "model": MODEL_NAME,
-        "temperature": 0.2,
+        "temperature": 0.3,
         "max_tokens": 8192,
         "messages": [
             {
