@@ -86,11 +86,11 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     ---
     """
 
-    prompt += "\n\nCRITICAL: DO NOT TRUNCATE OR SUMMARIZE THE OUTPUT. If there are 40 items on the page, you MUST output 40 JSON objects in the array. Never stop early."
+    prompt += "\n\nCRITICAL: DO NOT TRUNCATE THE OUTPUT. You MUST extract every item on the page. \nCRITICAL 2: DO NOT FALL INTO AN INFINITE REPETITION LOOP! Do NOT repeatedly output the exact same row endlessly. Once you transcribe an item from the paper, move to the next unique item."
 
     payload = {
         "model": MODEL_NAME,
-        "temperature": 0.1,
+        "temperature": 0.2,
         "max_tokens": 8192,
         "messages": [
             {
