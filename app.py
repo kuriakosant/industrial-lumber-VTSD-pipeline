@@ -92,7 +92,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     payload = {
         "model": MODEL_NAME,
         "temperature": 0.3,
-        "max_tokens": 8192,
+        "max_tokens": 4096,
         "messages": [
             {
                 "role": "user",
