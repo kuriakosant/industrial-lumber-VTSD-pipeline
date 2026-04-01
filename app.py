@@ -146,7 +146,8 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
         return json.loads(content)
         
     except requests.exceptions.RequestException as e:
-        st.error(f"API Request failed: {e}")
+        error_msg = e.response.text if hasattr(e, 'response') and e.response else str(e)
+        st.error(f"API Request failed: {e}\n\nProvider Details:\n{error_msg}")
         return None
     except json.JSONDecodeError as e:
         st.error(f"Failed to parse JSON response from the model. Raw response:\n{content}")
