@@ -16,7 +16,7 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-MODEL_NAME = "anthropic/claude-3.5-sonnet"
+MODEL_NAME = "openai/gpt-4o"
 TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
@@ -146,7 +146,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
         return json.loads(content)
         
     except requests.exceptions.RequestException as e:
-        error_msg = e.response.text if hasattr(e, 'response') and e.response else str(e)
+        error_msg = e.response.text if (hasattr(e, 'response') and e.response is not None) else str(e)
         st.error(f"API Request failed: {e}\n\nProvider Details:\n{error_msg}")
         return None
     except json.JSONDecodeError as e:
