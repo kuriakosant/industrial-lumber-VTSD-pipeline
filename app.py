@@ -21,24 +21,7 @@ TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
 def encode_image(image_bytes):
-    """Downscales massive images before API transmission to avoid payload limits (e.g. 5MB Anthropic cap)"""
-    try:
-        img = Image.open(BytesIO(image_bytes))
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-            
-        # 1600px is excellent for OCR while slashing byte size by 80%+
-        max_size = 1600
-        if max(img.width, img.height) > max_size:
-            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-            
-        buffered = BytesIO()
-        img.save(buffered, format="JPEG", quality=85)
-        optimized_bytes = buffered.getvalue()
-        return base64.b64encode(optimized_bytes).decode('utf-8')
-    except Exception as e:
-        # Fallback to the raw upload if PIL fails
-        return base64.b64encode(image_bytes).decode('utf-8')
+    return base64.b64encode(image_bytes).decode('utf-8')
 
 def parse_image_with_openrouter(image_bytes, special_instructions=""):
     """Sends the image to OpenRouter and returns the structured JSON."""
@@ -110,7 +93,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     payload = {
         "model": MODEL_NAME,
         "temperature": 0.3,
-        "max_tokens": 4096,
+        "max_tokens": 8192,
         "messages": [
             {
                 "role": "user",
