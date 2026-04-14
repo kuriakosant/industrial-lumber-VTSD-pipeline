@@ -16,7 +16,7 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-MODEL_NAME = "openai/gpt-4o"
+MODEL_NAME = "openai/gpt-4o-2024-08-06"
 TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
@@ -93,7 +93,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     payload = {
         "model": MODEL_NAME,
         "temperature": 0.3,
-        "max_tokens": 8192,
+        "max_tokens": 16000,
         "messages": [
             {
                 "role": "user",
