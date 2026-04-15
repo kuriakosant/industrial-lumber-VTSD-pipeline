@@ -93,7 +93,6 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     payload = {
         "model": MODEL_NAME,
         "temperature": 0.3,
-        "max_tokens": 16000,
         "messages": [
             {
                 "role": "user",
@@ -119,6 +118,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
         
         result = response.json()
         content = result['choices'][0]['message']['content'].strip()
+        finish_reason = result['choices'][0].get('finish_reason', 'unknown')
         
         # Clean up potential markdown formatting if the model disobeys instructions
         if content.startswith("```json"):
@@ -133,7 +133,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
         st.error(f"API Request failed: {e}\n\nProvider Details:\n{error_msg}")
         return None
     except json.JSONDecodeError as e:
-        st.error(f"Failed to parse JSON response from the model. Raw response:\n{content}")
+        st.error(f"Failed to parse JSON response. Stop Reason: {finish_reason}\nRaw response:\n{content}")
         return None
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
