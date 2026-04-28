@@ -220,6 +220,13 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
+    st.markdown("### 📷 Uploaded Images Preview")
+    preview_cols = st.columns(min(len(uploaded_files), 4))
+    for idx, f in enumerate(uploaded_files):
+        preview_cols[idx % len(preview_cols)].image(f, caption=f.name, use_container_width=True)
+    
+    st.divider()
+
     col1, col2 = st.columns([2, 1])
     with col1:
         st.info(f"📂 **{len(uploaded_files)} file(s) uploaded.**")
@@ -257,6 +264,7 @@ if uploaded_files:
                 if isinstance(parsed_json, dict):
                     if not is_massive:
                         parsed_json["_source_filename"] = uploaded_file.name  # type: ignore
+                        parsed_json["_source_image_bytes"] = image_bytes # type: ignore
                         orders.append(parsed_json)
                     else:
                         new_items = parsed_json.get("Order_Items", [])  # type: ignore
@@ -264,6 +272,9 @@ if uploaded_files:
                             master_items = master_order["Order_Items"]
                             if isinstance(master_items, list):
                                 master_items.extend(new_items)  # type: ignore
+                            if "_source_image_bytes_list" not in master_order:
+                                master_order["_source_image_bytes_list"] = []
+                            master_order["_source_image_bytes_list"].append(image_bytes)
                 else:
                     st.error(f"❌ Failed to extract valid tabular data from '{uploaded_file.name}'. Skipping.")
         progress.progress(100, text="All done!")
@@ -289,6 +300,14 @@ if "parsed_orders" in st.session_state and st.session_state["parsed_orders"]:
         source_file = order_data.get("_source_filename", f"order_{i+1}")
 
         st.subheader(f"📋 Order {i+1}: {customer_name_default or source_file}")
+
+        if "_source_image_bytes" in order_data:
+            st.image(order_data["_source_image_bytes"], caption="Source Image", use_container_width=True)
+        elif "_source_image_bytes_list" in order_data:
+            st.markdown("##### Source Images (Merged)")
+            img_cols = st.columns(min(len(order_data["_source_image_bytes_list"]), 4))
+            for idx, img_bytes in enumerate(order_data["_source_image_bytes_list"]):
+                img_cols[idx % len(img_cols)].image(img_bytes, use_container_width=True)
 
         col1, col2 = st.columns(2)
         with col1:
