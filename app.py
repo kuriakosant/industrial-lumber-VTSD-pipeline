@@ -223,7 +223,7 @@ if uploaded_files:
     st.markdown("### 📷 Uploaded Images Preview")
     preview_cols = st.columns(min(len(uploaded_files), 4))
     for idx, f in enumerate(uploaded_files):
-        preview_cols[idx % len(preview_cols)].image(f, caption=f.name, use_container_width=True)
+        preview_cols[idx % len(preview_cols)].image(f, caption=f.name, use_column_width=True)
     
     st.divider()
 
@@ -302,12 +302,12 @@ if "parsed_orders" in st.session_state and st.session_state["parsed_orders"]:
         st.subheader(f"📋 Order {i+1}: {customer_name_default or source_file}")
 
         if "_source_image_bytes" in order_data:
-            st.image(order_data["_source_image_bytes"], caption="Source Image", use_container_width=True)
+            st.image(order_data["_source_image_bytes"], caption="Source Image", use_column_width=True)
         elif "_source_image_bytes_list" in order_data:
             st.markdown("##### Source Images (Merged)")
             img_cols = st.columns(min(len(order_data["_source_image_bytes_list"]), 4))
             for idx, img_bytes in enumerate(order_data["_source_image_bytes_list"]):
-                img_cols[idx % len(img_cols)].image(img_bytes, use_container_width=True)
+                img_cols[idx % len(img_cols)].image(img_bytes, use_column_width=True)
 
         col1, col2 = st.columns(2)
         with col1:
