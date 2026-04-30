@@ -16,29 +16,12 @@ load_dotenv()
 
 # --- CONFIGURATION ---
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-MODEL_NAME = "openai/gpt-4o"
+MODEL_NAME = "openai/gpt-4o-2024-08-06"
 TEMPLATE_PATH = "assets/ORDER-DEFAULT.xlsx"
 
 # --- HELPER FUNCTIONS ---
 def encode_image(image_bytes):
-    """Downscales massive images before API transmission to avoid payload limits (e.g. 5MB Anthropic cap)"""
-    try:
-        img = Image.open(BytesIO(image_bytes))
-        if img.mode != 'RGB':
-            img = img.convert('RGB')
-            
-        # 1600px is excellent for OCR while slashing byte size by 80%+
-        max_size = 1600
-        if max(img.width, img.height) > max_size:
-            img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
-            
-        buffered = BytesIO()
-        img.save(buffered, format="JPEG", quality=85)
-        optimized_bytes = buffered.getvalue()
-        return base64.b64encode(optimized_bytes).decode('utf-8')
-    except Exception as e:
-        # Fallback to the raw upload if PIL fails
-        return base64.b64encode(image_bytes).decode('utf-8')
+    return base64.b64encode(image_bytes).decode('utf-8')
 
 def parse_image_with_openrouter(image_bytes, special_instructions=""):
     """Sends the image to OpenRouter and returns the structured JSON."""
@@ -110,7 +93,6 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
     payload = {
         "model": MODEL_NAME,
         "temperature": 0.3,
-        "max_tokens": 4096,
         "messages": [
             {
                 "role": "user",
@@ -136,6 +118,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
         
         result = response.json()
         content = result['choices'][0]['message']['content'].strip()
+        finish_reason = result['choices'][0].get('finish_reason', 'unknown')
         
         # Clean up potential markdown formatting if the model disobeys instructions
         if content.startswith("```json"):
@@ -150,7 +133,7 @@ def parse_image_with_openrouter(image_bytes, special_instructions=""):
         st.error(f"API Request failed: {e}\n\nProvider Details:\n{error_msg}")
         return None
     except json.JSONDecodeError as e:
-        st.error(f"Failed to parse JSON response from the model. Raw response:\n{content}")
+        st.error(f"Failed to parse JSON response. Stop Reason: {finish_reason}\nRaw response:\n{content}")
         return None
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
@@ -237,6 +220,13 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
+    st.markdown("### 📷 Uploaded Images Preview")
+    preview_cols = st.columns(min(len(uploaded_files), 4))
+    for idx, f in enumerate(uploaded_files):
+        preview_cols[idx % len(preview_cols)].image(f, caption=f.name, use_container_width=True)
+    
+    st.divider()
+
     col1, col2 = st.columns([2, 1])
     with col1:
         st.info(f"📂 **{len(uploaded_files)} file(s) uploaded.**")
@@ -274,6 +264,7 @@ if uploaded_files:
                 if isinstance(parsed_json, dict):
                     if not is_massive:
                         parsed_json["_source_filename"] = uploaded_file.name  # type: ignore
+                        parsed_json["_source_image_bytes"] = image_bytes # type: ignore
                         orders.append(parsed_json)
                     else:
                         new_items = parsed_json.get("Order_Items", [])  # type: ignore
@@ -281,6 +272,9 @@ if uploaded_files:
                             master_items = master_order["Order_Items"]
                             if isinstance(master_items, list):
                                 master_items.extend(new_items)  # type: ignore
+                            if "_source_image_bytes_list" not in master_order:
+                                master_order["_source_image_bytes_list"] = []
+                            master_order["_source_image_bytes_list"].append(image_bytes)
                 else:
                     st.error(f"❌ Failed to extract valid tabular data from '{uploaded_file.name}'. Skipping.")
         progress.progress(100, text="All done!")
@@ -306,6 +300,14 @@ if "parsed_orders" in st.session_state and st.session_state["parsed_orders"]:
         source_file = order_data.get("_source_filename", f"order_{i+1}")
 
         st.subheader(f"📋 Order {i+1}: {customer_name_default or source_file}")
+
+        if "_source_image_bytes" in order_data:
+            st.image(order_data["_source_image_bytes"], caption="Source Image", use_container_width=True)
+        elif "_source_image_bytes_list" in order_data:
+            st.markdown("##### Source Images (Merged)")
+            img_cols = st.columns(min(len(order_data["_source_image_bytes_list"]), 4))
+            for idx, img_bytes in enumerate(order_data["_source_image_bytes_list"]):
+                img_cols[idx % len(img_cols)].image(img_bytes, use_container_width=True)
 
         col1, col2 = st.columns(2)
         with col1:
