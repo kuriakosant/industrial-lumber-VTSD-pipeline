@@ -220,16 +220,45 @@ uploaded_files = st.file_uploader(
 )
 
 if uploaded_files:
-    st.markdown("### 📷 Uploaded Images Preview")
-    preview_cols = st.columns(min(len(uploaded_files), 4))
-    for idx, f in enumerate(uploaded_files):
-        preview_cols[idx % len(preview_cols)].image(f, caption=f.name, use_column_width=True)
-    
+    # ---- Image Order Management ----
+    # Sync session_state order list whenever the uploaded files change
+    uploaded_names = [f.name for f in uploaded_files]
+    if st.session_state.get("_order_names") != uploaded_names:
+        st.session_state["_image_order"] = list(range(len(uploaded_files)))
+        st.session_state["_order_names"] = uploaded_names
+
+    order = st.session_state["_image_order"]
+
+    st.markdown("### 📷 Uploaded Images — Drag to Reorder")
+    st.caption("Use the ↑ ↓ arrows to set the processing order. The number badge shows the current position.")
+
+    n = len(uploaded_files)
+    # Render each image card in current order with move buttons
+    for pos, file_idx in enumerate(order):
+        f = uploaded_files[file_idx]
+        img_col, btn_col = st.columns([5, 1])
+        with img_col:
+            st.image(f, caption=f"#{pos + 1}  {f.name}", use_column_width=True)
+        with btn_col:
+            st.write("")
+            st.write("")
+            if st.button("▲", key=f"up_{pos}", disabled=(pos == 0)):
+                order[pos], order[pos - 1] = order[pos - 1], order[pos]
+                st.session_state["_image_order"] = order
+                st.rerun()
+            if st.button("▼", key=f"dn_{pos}", disabled=(pos == n - 1)):
+                order[pos], order[pos + 1] = order[pos + 1], order[pos]
+                st.session_state["_image_order"] = order
+                st.rerun()
+
+    # Build a sorted list the rest of the app uses
+    uploaded_files_ordered = [uploaded_files[i] for i in order]
+
     st.divider()
 
     col1, col2 = st.columns([2, 1])
     with col1:
-        st.info(f"📂 **{len(uploaded_files)} file(s) uploaded.**")
+        st.info(f"📂 **{n} file(s) uploaded.** Processing order locked in above.")
         processing_mode = st.radio(
             "Processing Mode",
             ["Separate Orders (One Excel file per image)", "Single Massive Order (Merge all images into one Excel file)"]
@@ -252,7 +281,7 @@ if uploaded_files:
         }
         
         progress = st.progress(0, text="Starting extraction...")
-        for i, uploaded_file in enumerate(uploaded_files):
+        for i, uploaded_file in enumerate(uploaded_files_ordered):
             progress.progress(
                 int((i / len(uploaded_files)) * 100),
                 text=f"Processing image {i+1} of {len(uploaded_files)}: {uploaded_file.name}..."
